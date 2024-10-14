@@ -1,0 +1,9 @@
+[Unit]
+Description=Logitech K650 fix for insert key issue.
+
+[Service]
+ExecStart=/sbin/logitech-k650-fix
+Type=simple
+
+[Install]
+WantedBy=multi-user.target
