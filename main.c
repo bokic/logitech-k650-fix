@@ -156,11 +156,7 @@ int main(int argc, char *argv[])
         goto exit;
     }
 
-    if (getppid() != 1) {
-        printf("WARNING!!! Not started as daemon. Will delay 1sec!\n");
-        sleep(1);
-        printf("Continuing...\n");
-    }
+    sleep(1);
 
     if (ioctl(fd, EVIOCGRAB, (void*)1) == -1) {
         perror("ioctl for EVIOCGRAB 1 failed.");
