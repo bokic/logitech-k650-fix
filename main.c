@@ -217,15 +217,15 @@ int main(int argc, char *argv[])
                     CHECK_WRITE(wr, ev);
 
                     ev.code = 0; ev.type = 0; ev.value = 0;
-                    write(uinput, &ev, sizeof(ev));
+                    wr = write(uinput, &ev, sizeof(ev));
                     CHECK_WRITE(wr, ev);
 
                     ev.code = KEY_INSERT; ev.type = 1; ev.value = 0;
-                    write(uinput, &ev, sizeof(ev));
+                    wr = write(uinput, &ev, sizeof(ev));
                     CHECK_WRITE(wr, ev);
 
                     ev.code = 0; ev.type = 0; ev.value = 0;
-                    write(uinput, &ev, sizeof(ev));
+                    wr = write(uinput, &ev, sizeof(ev));
                     CHECK_WRITE(wr, ev);
 
                     rd = read(fd, &ev, sizeof(ev));
