@@ -1,0 +1,2 @@
+obj-x86_64-linux-gnu/logitech-k650-fix sbin
+logitech-k650-fix.service lib/systemd/system
