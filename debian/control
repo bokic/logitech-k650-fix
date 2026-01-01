@@ -1,0 +1,14 @@
+Source: logitech-k650-fix
+Section: utils
+Priority: optional
+Maintainer: Elifarley <elifarley@gmail.com>
+Build-Depends: debhelper-compat (= 13), cmake, libevdev-dev
+Standards-Version: 4.6.0
+Homepage: https://github.com/bokic/logitech-k650-fix
+
+Package: logitech-k650-fix
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Fix for Logitech K650 keyboard issues
+ This package swaps the language switch and insert keys for the Logitech K650 keyboard.
+

@@ -6,6 +6,6 @@ add_executable(logitech-k650-fix
     main.c
 )
 
-install(TARGETS
-    logitech-k650-fix
-)
+install(TARGETS logitech-k650-fix DESTINATION bin)
+install(FILES logitech-k650-fix.service DESTINATION /lib/systemd/system)
+
