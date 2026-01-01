@@ -22,6 +22,9 @@ sudo systemctl start logitech-k650-fix
 - Create Ubuntu PPA packages.
 - Update this file.
 
+## Issues
+Rarely this fix stops working. It is not related to this service. Unplugging and replugging the receiver helps to solve. See [Issue #5](https://github.com/bokic/logitech-k650-fix/issues/5)
+
 ## License
 
 MIT
