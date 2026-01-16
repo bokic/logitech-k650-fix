@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.15)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(UDEV REQUIRED libudev)
 
-project(logitech-k650-fix VERSION 0.9.2 LANGUAGES C)
+project(logitech-k650-fix VERSION 0.9.3 LANGUAGES C)
 
 add_executable(logitech-k650-fix
     main.c

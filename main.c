@@ -134,9 +134,9 @@ static void wait_for_usb_connection()
     }
 
     udev_monitor_filter_add_match_subsystem_devtype(mon, "usb", NULL);
-    
+
     udev_monitor_enable_receiving(mon);
-    
+
     fd = udev_monitor_get_fd(mon);
 
     printf("Monitoring USB events. Plug or unplug a USB device...\n");
@@ -155,7 +155,7 @@ static void wait_for_usb_connection()
                 const char* devpath = udev_device_get_devpath(dev);
                 const char* vendor_id = udev_device_get_sysattr_value(dev, "idVendor");
                 const char* model_id = udev_device_get_sysattr_value(dev, "idProduct");
-                
+
                 if (action && devpath) {
                     printf("Action: %s\n", action);
                     printf("Devpath: %s\n", devpath);
@@ -180,76 +180,11 @@ int main(int argc, char *argv[])
     int uinput = 0;
     int rc = 0;
 
-    if ((fd = open(argv[1], O_RDONLY)) < 0) {
-        perror("open failed.");
-        if (errno == EACCES && getuid() != 0)
-            fprintf(stderr, "You do not have access to %s. Try running as root instead.\n",	argv[1]);
-        goto exit;
-    }
-
-    if (signal(SIGINT, interrupt_handler) == SIG_ERR) {
-        perror("signal call for SIGINT failed.");
-        goto exit;
-    }
-
-    if (signal(SIGTERM, interrupt_handler) == SIG_ERR) {
-        perror("signal call for SIGTERM failed.");
-        goto exit;
-    }
-
-    fd_set rdfs;
-
-    FD_ZERO(&rdfs);
-    FD_SET(fd, &rdfs);
-
-    struct input_id id;
-    if (ioctl(fd, EVIOCGID, &id) == -1) {
-        perror("ioctl for EVIOCGID failed.");
-        goto exit;
-    }
-
-    if ((id.bustype != 3)||(id.vendor != 1133)||(id.product != 50504)) {
-        fprintf(stderr, "Wrong keyboard detected!\n");
-        goto exit;
-    }
-
-    if (id.version != 273) {
-        printf("WARNING!!! keyboard version 273 expected, but %d detected!\n", id.version);
-    }
-
-    uinput = constructKeyboard("Example device", &id);
-    if (uinput == -1) {
-        fprintf(stderr, "constructKeyboard call failed!\n");
-        goto exit;
-    }
-
-    if (getppid() != 1) {
-        printf("WARNING!!! Not started as daemon. Will delay 1sec!\n");
-        sleep(1);
-        printf("Continuing...\n");
-    }
-
-    if (ioctl(fd, EVIOCGRAB, (void*)1) == -1) {
-        perror("ioctl for EVIOCGRAB 1 failed.");
-        goto exit;
-    }
-
-    bool keep_converting = false;
-    while(!stop)
-    {
-        struct input_event ev;
-        int wr = 0;
-        int rv = 0;
-        int rd = 0;
-
-        rd = select(fd + 1, &rdfs, NULL, NULL, NULL);
-
-        if (stop) {
-            break;
-        }
-
-        if (rd == -1) {
-            perror("select failed.");
+    do {
+        if ((fd = open(argv[1], O_RDONLY)) < 0) {
+            perror("open failed.");
+            if (errno == EACCES && getuid() != 0)
+                fprintf(stderr, "You do not have access to %s. Try running as root instead.\n",	argv[1]);
             goto exit;
         }
 
@@ -280,7 +215,7 @@ int main(int argc, char *argv[])
         }
 
         if (id.version != 273) {
-            fprintf(stderr, "WARNING!!! keyboard version 273 expected, but %d detected!\n", id.version);
+            printf("WARNING!!! keyboard version 273 expected, but %d detected!\n", id.version);
         }
 
         uinput = constructKeyboard("Example device", &id);
@@ -289,7 +224,11 @@ int main(int argc, char *argv[])
             goto exit;
         }
 
-        sleep(1);
+        if (getppid() != 1) {
+            printf("WARNING!!! Not started as daemon. Will delay 1sec!\n");
+            sleep(1);
+            printf("Continuing...\n");
+        }
 
         if (ioctl(fd, EVIOCGRAB, (void*)1) == -1) {
             perror("ioctl for EVIOCGRAB 1 failed.");
