@@ -1,4 +1,4 @@
-# logitech-k650-fix
+# logitech-k650-fix [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/bokic/logitech-k650-fix)
 
 ## Short
 Fix for Logitech K650 keyboard insert key issue.
