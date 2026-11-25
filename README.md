@@ -1,4 +1,4 @@
-# logitech-k650-fix [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/bokic/logitech-k650-fix)
+# logitech-k650-fix [![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-blue)](https://deepwiki.com/bokic/logitech-k650-fix)
 
 User-space `evdev`/`uinput` daemon for the **Logitech Signature K650** keyboard on Linux.
 
