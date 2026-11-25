@@ -244,11 +244,6 @@ int main(int argc, char *argv[])
             goto exit;
         }
 
-        fd_set rdfs;
-
-        FD_ZERO(&rdfs);
-        FD_SET(fd, &rdfs);
-
         struct input_id id;
         if (ioctl(fd, EVIOCGID, &id) == -1) {
             perror("ioctl for EVIOCGID failed.");
@@ -293,6 +288,9 @@ int main(int argc, char *argv[])
             int rv = 0;
             ssize_t rd = 0;
 
+            fd_set rdfs;
+            FD_ZERO(&rdfs);
+            FD_SET(fd, &rdfs);
             rd = select(fd + 1, &rdfs, NULL, NULL, NULL);
 
             if (stop) {
@@ -313,6 +311,8 @@ int main(int argc, char *argv[])
 
                 timeout.tv_sec = 0;
                 timeout.tv_usec = 50000;
+                FD_ZERO(&rdfs);
+                FD_SET(fd, &rdfs);
                 rv = select(fd + 1, &rdfs, NULL, NULL, &timeout);
                 if (stop) {
                     break;
