@@ -30,17 +30,32 @@
         }                                                                                                         \
     } while (0)
 
-#define CHECK_WRITE(res, buf)                                                                                      \
-    do {                                                                                                           \
-        if ((res) == -1) {                                                                                         \
-            perror("write failed.");                                                                               \
-            goto exit;                                                                                             \
-        }                                                                                                          \
-        if ((size_t)(res) != sizeof(buf)) {                                                                        \
-            fprintf(stderr, "expected to write %zu bytes, but wrote only %zd\n", sizeof(struct input_event), (res)); \
-            goto exit;                                                                                             \
-        }                                                                                                          \
-    } while (0)
+static int write_event(int fd, const struct input_event *ev)
+{
+    for (;;) {
+        ssize_t wr = write(fd, ev, sizeof(*ev));
+        if (wr == -1) {
+            if (errno == EINTR) {
+                continue;
+            }
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                struct pollfd pfd = { .fd = fd, .events = POLLOUT };
+                if (poll(&pfd, 1, -1) == -1 && errno != EINTR) {
+                    perror("poll uinput failed.");
+                    return -1;
+                }
+                continue;
+            }
+            perror("write failed.");
+            return -1;
+        }
+        if ((size_t)wr != sizeof(*ev)) {
+            fprintf(stderr, "expected to write %zu bytes, but wrote only %zd\n", sizeof(*ev), wr);
+            return -1;
+        }
+        return 0;
+    }
+}
 
 static volatile sig_atomic_t stop = 0;
 
@@ -254,7 +269,6 @@ int main(int argc, char *argv[])
         while(!stop)
         {
             struct input_event ev;
-            ssize_t wr = 0;
             int rv = 0;
             ssize_t rd = 0;
 
@@ -296,20 +310,24 @@ int main(int argc, char *argv[])
 
                     if ((ev.code == KEY_SPACE)&&(ev.type == 1)&&(ev.value == 1)) {
                         ev.code = KEY_INSERT; ev.type = 1; ev.value = 1;
-                        wr = write(uinput, &ev, sizeof(ev));
-                        CHECK_WRITE(wr, ev);
+                        if (write_event(uinput, &ev) == -1) {
+                            goto exit;
+                        }
 
                         ev.code = 0; ev.type = 0; ev.value = 0;
-                        wr = write(uinput, &ev, sizeof(ev));
-                        CHECK_WRITE(wr, ev);
+                        if (write_event(uinput, &ev) == -1) {
+                            goto exit;
+                        }
 
                         ev.code = KEY_INSERT; ev.type = 1; ev.value = 0;
-                        wr = write(uinput, &ev, sizeof(ev));
-                        CHECK_WRITE(wr, ev);
+                        if (write_event(uinput, &ev) == -1) {
+                            goto exit;
+                        }
 
                         ev.code = 0; ev.type = 0; ev.value = 0;
-                        wr = write(uinput, &ev, sizeof(ev));
-                        CHECK_WRITE(wr, ev);
+                        if (write_event(uinput, &ev) == -1) {
+                            goto exit;
+                        }
 
                         rd = read(fd, &ev, sizeof(ev));
                         CHECK_READ(rd, ev);
@@ -336,8 +354,9 @@ int main(int argc, char *argv[])
                 ev.code = KEY_INSERT;
             }
 
-            wr = write(uinput, &ev, sizeof(ev));
-            CHECK_WRITE(wr, ev);
+            if (write_event(uinput, &ev) == -1) {
+                goto exit;
+            }
         }
 
         rc = ioctl(fd, EVIOCGRAB, (void*)0);
