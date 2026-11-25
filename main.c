@@ -68,6 +68,24 @@ static int constructKeyboard (const char *name, struct input_id *id)
         goto err;
     }
 
+    res = ioctl(fd, UI_SET_EVBIT, EV_MSC);
+    if (res == -1) {
+        perror("ioctl UI_SET_EVBIT EV_MSC");
+        goto err;
+    }
+
+    res = ioctl(fd, UI_SET_MSCBIT, MSC_SCAN);
+    if (res == -1) {
+        perror("ioctl UI_SET_MSCBIT MSC_SCAN");
+        goto err;
+    }
+
+    res = ioctl(fd, UI_SET_EVBIT, EV_REP);
+    if (res == -1) {
+        perror("ioctl UI_SET_EVBIT EV_REP");
+        goto err;
+    }
+
     for(int c = 0; c < KEY_MAX; c++) {
         res = ioctl(fd, UI_SET_KEYBIT, c);
         if (res == -1) {
