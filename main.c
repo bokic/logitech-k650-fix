@@ -348,6 +348,9 @@ int main(int argc, char *argv[])
 
 exit:
         if (uinput >= 0) {
+            if (ioctl(uinput, UI_DEV_DESTROY) == -1) {
+                perror("ioctl UI_DEV_DESTROY");
+            }
             close(uinput);
             uinput = -1;
         }
