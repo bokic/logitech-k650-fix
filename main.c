@@ -292,6 +292,9 @@ int main(int argc, char *argv[])
         }
 
         bool keep_converting = false;
+        bool has_pending_msc = false;
+        bool suppress_next_syn = false;
+        struct input_event pending_msc;
         while(!stop)
         {
             struct input_event ev;
@@ -315,12 +318,41 @@ int main(int argc, char *argv[])
             rd = read(fd, &ev, sizeof(ev));
             CHECK_READ(rd, ev);
 
+            if ((ev.type == EV_MSC) && (ev.code == MSC_SCAN)) {
+                if (has_pending_msc && write_event(uinput, &pending_msc) == -1) {
+                    goto exit;
+                }
+                pending_msc = ev;
+                has_pending_msc = true;
+                continue;
+            }
+
+            if ((ev.type == EV_SYN) && (ev.code == SYN_REPORT)) {
+                if (suppress_next_syn) {
+                    suppress_next_syn = false;
+                    continue;
+                }
+                if (has_pending_msc) {
+                    if (write_event(uinput, &pending_msc) == -1) {
+                        goto exit;
+                    }
+                    has_pending_msc = false;
+                }
+                if (write_event(uinput, &ev) == -1) {
+                    goto exit;
+                }
+                continue;
+            }
 
             if (!keep_converting && (ev.code == KEY_LEFTMETA) && (ev.type == EV_KEY) && (ev.value == 1)) {
                 struct input_event pending[16];
                 size_t pending_len = 0;
                 bool matched_space = false;
 
+                if (has_pending_msc) {
+                    pending[pending_len++] = pending_msc;
+                    has_pending_msc = false;
+                }
                 pending[pending_len++] = ev;
 
                 while (pending_len < (sizeof(pending) / sizeof(pending[0]))) {
@@ -373,8 +405,10 @@ int main(int argc, char *argv[])
                     }
 
                     keep_converting = true;
+                    suppress_next_syn = true;
                     continue;
                 } else {
+                    suppress_next_syn = false;
                     if (flush_events(uinput, pending, pending_len) == -1) {
                         goto exit;
                     }
@@ -383,6 +417,8 @@ int main(int argc, char *argv[])
             }
 
             if (keep_converting && (ev.type == EV_KEY) && (ev.code == KEY_LEFTMETA)) {
+                has_pending_msc = false;
+                suppress_next_syn = true;
                 if (ev.value == 0) {
                     keep_converting = false;
                 }
@@ -391,6 +427,14 @@ int main(int argc, char *argv[])
 
             if (keep_converting && (ev.type == EV_KEY) && (ev.code == KEY_SPACE)) {
                 ev.code = KEY_INSERT;
+            }
+
+            suppress_next_syn = false;
+            if (has_pending_msc) {
+                if (write_event(uinput, &pending_msc) == -1) {
+                    goto exit;
+                }
+                has_pending_msc = false;
             }
 
             if (write_event(uinput, &ev) == -1) {
