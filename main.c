@@ -59,6 +59,16 @@ static int write_event(int fd, const struct input_event *ev)
     }
 }
 
+static int flush_events(int fd, const struct input_event *evs, size_t count)
+{
+    for (size_t i = 0; i < count; i++) {
+        if (write_event(fd, &evs[i]) == -1) {
+            return -1;
+        }
+    }
+    return 0;
+}
+
 static volatile sig_atomic_t stop = 0;
 
 static void interrupt_handler(int sig)
@@ -306,67 +316,90 @@ int main(int argc, char *argv[])
             CHECK_READ(rd, ev);
 
 
-            if ((ev.code == KEY_LEFTMETA)&&(ev.type == 1)&&(ev.value == 1)) {
-                struct timeval timeout;
+            if ((ev.code == KEY_LEFTMETA)&&(ev.type == EV_KEY)&&(ev.value == 1)) {
+                struct input_event pending[16];
+                size_t pending_len = 0;
+                bool matched_space = false;
 
-                timeout.tv_sec = 0;
-                timeout.tv_usec = 50000;
-                FD_ZERO(&rdfs);
-                FD_SET(fd, &rdfs);
-                rv = select(fd + 1, &rdfs, NULL, NULL, &timeout);
+                pending[pending_len++] = ev;
+
+                while (pending_len < (sizeof(pending) / sizeof(pending[0]))) {
+                    struct timeval timeout;
+                    timeout.tv_sec = 0;
+                    timeout.tv_usec = 50000;
+
+                    FD_ZERO(&rdfs);
+                    FD_SET(fd, &rdfs);
+                    rv = select(fd + 1, &rdfs, NULL, NULL, &timeout);
+                    if (stop) {
+                        break;
+                    }
+                    if (rv == -1) {
+                        perror("select failed.");
+                        goto exit;
+                    }
+                    if (rv == 0) {
+                        break;
+                    }
+
+                    rd = read(fd, &ev, sizeof(ev));
+                    CHECK_READ(rd, ev);
+
+                    if ((ev.type == EV_KEY) && (ev.code == KEY_SPACE) && (ev.value == 1)) {
+                        matched_space = true;
+                        break;
+                    }
+
+                    pending[pending_len++] = ev;
+
+                    if (ev.type == EV_KEY) {
+                        break;
+                    }
+                }
+
                 if (stop) {
                     break;
                 }
-                if (rv == -1) {
-                    perror("select failed.");
-                    goto exit;
-                }
 
-                if (rv > 0) {
-                    rd = read(fd, &ev, sizeof(ev));
-                    CHECK_READ(rd, ev);
-
-                    rd = read(fd, &ev, sizeof(ev));
-                    CHECK_READ(rd, ev);
-
-                    rd = read(fd, &ev, sizeof(ev));
-                    CHECK_READ(rd, ev);
-
-                    if ((ev.code == KEY_SPACE)&&(ev.type == 1)&&(ev.value == 1)) {
-                        ev.code = KEY_INSERT; ev.type = 1; ev.value = 1;
-                        if (write_event(uinput, &ev) == -1) {
-                            goto exit;
-                        }
-
-                        ev.code = 0; ev.type = 0; ev.value = 0;
-                        if (write_event(uinput, &ev) == -1) {
-                            goto exit;
-                        }
-
-                        ev.code = KEY_INSERT; ev.type = 1; ev.value = 0;
-                        if (write_event(uinput, &ev) == -1) {
-                            goto exit;
-                        }
-
-                        ev.code = 0; ev.type = 0; ev.value = 0;
-                        if (write_event(uinput, &ev) == -1) {
-                            goto exit;
-                        }
-
-                        rd = read(fd, &ev, sizeof(ev));
-                        CHECK_READ(rd, ev);
-
-                        rd = read(fd, &ev, sizeof(ev));
-                        CHECK_READ(rd, ev);
-
-                        rd = read(fd, &ev, sizeof(ev));
-                        CHECK_READ(rd, ev);
-
-                        rd = read(fd, &ev, sizeof(ev));
-                        CHECK_READ(rd, ev);
-
-                        keep_converting = true;
+                if (matched_space) {
+                    ev.code = KEY_INSERT; ev.type = 1; ev.value = 1;
+                    if (write_event(uinput, &ev) == -1) {
+                        goto exit;
                     }
+
+                    ev.code = 0; ev.type = 0; ev.value = 0;
+                    if (write_event(uinput, &ev) == -1) {
+                        goto exit;
+                    }
+
+                    ev.code = KEY_INSERT; ev.type = 1; ev.value = 0;
+                    if (write_event(uinput, &ev) == -1) {
+                        goto exit;
+                    }
+
+                    ev.code = 0; ev.type = 0; ev.value = 0;
+                    if (write_event(uinput, &ev) == -1) {
+                        goto exit;
+                    }
+
+                    rd = read(fd, &ev, sizeof(ev));
+                    CHECK_READ(rd, ev);
+
+                    rd = read(fd, &ev, sizeof(ev));
+                    CHECK_READ(rd, ev);
+
+                    rd = read(fd, &ev, sizeof(ev));
+                    CHECK_READ(rd, ev);
+
+                    rd = read(fd, &ev, sizeof(ev));
+                    CHECK_READ(rd, ev);
+
+                    keep_converting = true;
+                } else {
+                    if (flush_events(uinput, pending, pending_len) == -1) {
+                        goto exit;
+                    }
+                    continue;
                 }
             }
 
