@@ -1,9 +1,16 @@
 [Unit]
 Description=Logitech K650 fix for insert key issue.
+After=systemd-udevd.service
 
 [Service]
-ExecStart=/sbin/logitech-k650-fix /dev/input/by-id/usb-Logitech_USB_Receiver-event-kbd
+ExecStart=/usr/bin/logitech-k650-fix /dev/input/by-id/usb-Logitech_USB_Receiver-event-kbd
 Type=simple
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
 
 [Install]
 WantedBy=multi-user.target
