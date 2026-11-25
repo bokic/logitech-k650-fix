@@ -167,8 +167,8 @@ static void wait_for_usb_connection()
 int main(int argc, char *argv[])
 {
     (void)argc;
-    int fd = 0;
-    int uinput = 0;
+    int fd = -1;
+    int uinput = -1;
     int rc = 0;
 
     do {
@@ -328,13 +328,13 @@ int main(int argc, char *argv[])
         }
 
 exit:
-        if (uinput > 0) {
+        if (uinput >= 0) {
             close(uinput);
-            uinput = 0;
+            uinput = -1;
         }
-        if (fd > 0) {
+        if (fd >= 0) {
             close(fd);
-            fd = 0;
+            fd = -1;
         }
 
         if (!stop) {
