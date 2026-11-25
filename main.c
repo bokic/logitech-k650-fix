@@ -209,7 +209,11 @@ static void wait_for_usb_connection()
 
 int main(int argc, char *argv[])
 {
-    (void)argc;
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <event-device>\n", argc > 0 ? argv[0] : "logitech-k650-fix");
+        return EXIT_FAILURE;
+    }
+
     int fd = -1;
     int uinput = -1;
     int rc = 0;
