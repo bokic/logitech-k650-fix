@@ -1,0 +1,34 @@
+[Unit]
+Description=Logitech K650 fix for insert key issue.
+After=systemd-udevd.service
+
+[Service]
+ExecStart=@CMAKE_INSTALL_FULL_BINDIR@/logitech-k650-fix /dev/input/by-id/usb-Logitech_USB_Receiver-event-kbd
+Type=simple
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+DevicePolicy=closed
+DeviceAllow=char-input r
+DeviceAllow=/dev/uinput rw
+RestrictAddressFamilies=AF_NETLINK
+IPAddressDeny=any
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+MemoryDenyWriteExecute=yes
+LockPersonality=yes
+SystemCallFilter=@system-service
+
+[Install]
+WantedBy=multi-user.target

@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.15)
 
-project(logitech-k650-fix VERSION 0.9.3 LANGUAGES C)
+project(logitech-k650-fix VERSION 0.9.4 LANGUAGES C)
+
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
+endif()
 
 include(GNUInstallDirs)
 
@@ -9,6 +13,7 @@ pkg_check_modules(UDEV REQUIRED IMPORTED_TARGET libudev)
 
 add_executable(logitech-k650-fix
     main.c
+    remap.c
 )
 
 set_target_properties(logitech-k650-fix PROPERTIES
@@ -24,10 +29,24 @@ install(TARGETS logitech-k650-fix
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-file(READ "${CMAKE_CURRENT_SOURCE_DIR}/logitech-k650-fix.service" _service_content)
-string(REPLACE "/usr/bin/logitech-k650-fix" "${CMAKE_INSTALL_FULL_BINDIR}/logitech-k650-fix" _service_content "${_service_content}")
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/logitech-k650-fix.service" "${_service_content}")
+pkg_get_variable(_default_systemd_unit_dir systemd systemdsystemunitdir)
+if(NOT _default_systemd_unit_dir)
+    set(_default_systemd_unit_dir "${CMAKE_INSTALL_PREFIX}/lib/systemd/system")
+endif()
+set(SYSTEMD_UNIT_DIR "${_default_systemd_unit_dir}" CACHE PATH "Directory for systemd unit files")
+
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/logitech-k650-fix.service.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/logitech-k650-fix.service"
+    @ONLY
+)
 
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/logitech-k650-fix.service"
-    DESTINATION lib/systemd/system
+    DESTINATION "${SYSTEMD_UNIT_DIR}"
 )
+
+option(BUILD_TESTING "Build the test suite" ON)
+if(BUILD_TESTING)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
