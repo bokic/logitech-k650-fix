@@ -8,6 +8,7 @@
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/select.h>
 #include <sys/time.h>
@@ -173,12 +174,12 @@ int main(int argc, char *argv[])
 
     if (signal(SIGINT, interrupt_handler) == SIG_ERR) {
         perror("signal call for SIGINT failed.");
-        return 1;
+        return EXIT_FAILURE;
     }
 
     if (signal(SIGTERM, interrupt_handler) == SIG_ERR) {
         perror("signal call for SIGTERM failed.");
-        return 1;
+        return EXIT_FAILURE;
     }
 
     do {
@@ -343,5 +344,5 @@ exit:
 
     } while(!stop);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
