@@ -316,7 +316,7 @@ int main(int argc, char *argv[])
             CHECK_READ(rd, ev);
 
 
-            if ((ev.code == KEY_LEFTMETA)&&(ev.type == EV_KEY)&&(ev.value == 1)) {
+            if (!keep_converting && (ev.code == KEY_LEFTMETA) && (ev.type == EV_KEY) && (ev.value == 1)) {
                 struct input_event pending[16];
                 size_t pending_len = 0;
                 bool matched_space = false;
@@ -362,39 +362,18 @@ int main(int argc, char *argv[])
                 }
 
                 if (matched_space) {
-                    ev.code = KEY_INSERT; ev.type = 1; ev.value = 1;
+                    ev.type = EV_KEY; ev.code = KEY_INSERT; ev.value = 1;
                     if (write_event(uinput, &ev) == -1) {
                         goto exit;
                     }
 
-                    ev.code = 0; ev.type = 0; ev.value = 0;
+                    ev.type = EV_SYN; ev.code = SYN_REPORT; ev.value = 0;
                     if (write_event(uinput, &ev) == -1) {
                         goto exit;
                     }
-
-                    ev.code = KEY_INSERT; ev.type = 1; ev.value = 0;
-                    if (write_event(uinput, &ev) == -1) {
-                        goto exit;
-                    }
-
-                    ev.code = 0; ev.type = 0; ev.value = 0;
-                    if (write_event(uinput, &ev) == -1) {
-                        goto exit;
-                    }
-
-                    rd = read(fd, &ev, sizeof(ev));
-                    CHECK_READ(rd, ev);
-
-                    rd = read(fd, &ev, sizeof(ev));
-                    CHECK_READ(rd, ev);
-
-                    rd = read(fd, &ev, sizeof(ev));
-                    CHECK_READ(rd, ev);
-
-                    rd = read(fd, &ev, sizeof(ev));
-                    CHECK_READ(rd, ev);
 
                     keep_converting = true;
+                    continue;
                 } else {
                     if (flush_events(uinput, pending, pending_len) == -1) {
                         goto exit;
@@ -403,11 +382,14 @@ int main(int argc, char *argv[])
                 }
             }
 
-            if ((keep_converting)&&(ev.code == KEY_LEFTMETA)&&(ev.type == 1)&&(ev.value == 0)) {
-                keep_converting = false;
+            if (keep_converting && (ev.type == EV_KEY) && (ev.code == KEY_LEFTMETA)) {
+                if (ev.value == 0) {
+                    keep_converting = false;
+                }
+                continue;
             }
 
-            if ((keep_converting)&&(ev.code == KEY_SPACE)) {
+            if (keep_converting && (ev.type == EV_KEY) && (ev.code == KEY_SPACE)) {
                 ev.code = KEY_INSERT;
             }
 
