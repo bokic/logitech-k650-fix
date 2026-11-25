@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include <errno.h>
 #include <fcntl.h>
 #include <libudev.h>
@@ -165,12 +167,19 @@ static void wait_for_usb_connection()
 
     printf("Monitoring USB events. Plug or unplug a USB device...\n");
 
-    while (!exit) {
+    while (!exit && !stop) {
         struct pollfd fds[1];
         fds[0].fd = fd;
         fds[0].events = POLLIN;
 
         int ret = poll(fds, 1, -1);
+        if (ret == -1) {
+            if (errno == EINTR) {
+                continue;
+            }
+            perror("poll failed");
+            break;
+        }
 
         if (ret > 0 && (fds[0].revents & POLLIN)) {
             struct udev_device *dev = udev_monitor_receive_device(mon);
@@ -205,13 +214,19 @@ int main(int argc, char *argv[])
     int uinput = -1;
     int rc = 0;
 
-    if (signal(SIGINT, interrupt_handler) == SIG_ERR) {
-        perror("signal call for SIGINT failed.");
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = interrupt_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+
+    if (sigaction(SIGINT, &sa, NULL) == -1) {
+        perror("sigaction call for SIGINT failed.");
         return EXIT_FAILURE;
     }
 
-    if (signal(SIGTERM, interrupt_handler) == SIG_ERR) {
-        perror("signal call for SIGTERM failed.");
+    if (sigaction(SIGTERM, &sa, NULL) == -1) {
+        perror("sigaction call for SIGTERM failed.");
         return EXIT_FAILURE;
     }
 
@@ -293,6 +308,9 @@ int main(int argc, char *argv[])
                 timeout.tv_sec = 0;
                 timeout.tv_usec = 50000;
                 rv = select(fd + 1, &rdfs, NULL, NULL, &timeout);
+                if (stop) {
+                    break;
+                }
                 if (rv == -1) {
                     perror("select failed.");
                     goto exit;
