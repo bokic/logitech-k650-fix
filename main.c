@@ -171,21 +171,21 @@ int main(int argc, char *argv[])
     int uinput = -1;
     int rc = 0;
 
+    if (signal(SIGINT, interrupt_handler) == SIG_ERR) {
+        perror("signal call for SIGINT failed.");
+        return 1;
+    }
+
+    if (signal(SIGTERM, interrupt_handler) == SIG_ERR) {
+        perror("signal call for SIGTERM failed.");
+        return 1;
+    }
+
     do {
         if ((fd = open(argv[1], O_RDONLY)) < 0) {
             perror("open failed.");
             if (errno == EACCES && getuid() != 0)
                 fprintf(stderr, "You do not have access to %s. Try running as root instead.\n",	argv[1]);
-            goto exit;
-        }
-
-        if (signal(SIGINT, interrupt_handler) == SIG_ERR) {
-            perror("signal call for SIGINT failed.");
-            goto exit;
-        }
-
-        if (signal(SIGTERM, interrupt_handler) == SIG_ERR) {
-            perror("signal call for SIGTERM failed.");
             goto exit;
         }
 
