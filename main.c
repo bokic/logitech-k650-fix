@@ -69,7 +69,7 @@ static void interrupt_handler(int sig)
 
 static int constructKeyboard (const char *name, struct input_id *id)
 {
-    struct uinput_user_dev description;
+    struct uinput_setup description;
     int res = 0;
     int fd = 0;
 
@@ -112,7 +112,7 @@ static int constructKeyboard (const char *name, struct input_id *id)
     }
 
     memset(&description, 0, sizeof(description));
-    strncpy(description.name, name, UINPUT_MAX_NAME_SIZE);
+    strncpy(description.name, name, UINPUT_MAX_NAME_SIZE - 1);
     memcpy(&description.id, id, sizeof(description.id));
 
     res = ioctl(fd, UI_DEV_SETUP, &description);
