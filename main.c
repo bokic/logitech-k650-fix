@@ -137,7 +137,7 @@ err:
     return -1;
 }
 
-static void wait_for_usb_connection()
+static void wait_for_usb_connection(const char *dev_path)
 {
     struct udev *udev;
     struct udev_monitor *mon;
@@ -159,13 +159,19 @@ static void wait_for_usb_connection()
         return;
     }
 
-    udev_monitor_filter_add_match_subsystem_devtype(mon, "usb", NULL);
+    udev_monitor_filter_add_match_subsystem_devtype(mon, "input", NULL);
 
     udev_monitor_enable_receiving(mon);
 
+    if (access(dev_path, F_OK) == 0) {
+        exit = true;
+    }
+
     fd = udev_monitor_get_fd(mon);
 
-    printf("Monitoring USB events. Plug or unplug a USB device...\n");
+    if (!exit) {
+        printf("Waiting for input device %s...\n", dev_path);
+    }
 
     while (!exit && !stop) {
         struct pollfd fds[1];
@@ -184,16 +190,12 @@ static void wait_for_usb_connection()
         if (ret > 0 && (fds[0].revents & POLLIN)) {
             struct udev_device *dev = udev_monitor_receive_device(mon);
             if (dev) {
-                const char* action = udev_device_get_action(dev);
-                const char* devpath = udev_device_get_devpath(dev);
-                const char* vendor_id = udev_device_get_sysattr_value(dev, "idVendor");
-                const char* model_id = udev_device_get_sysattr_value(dev, "idProduct");
+                const char *action = udev_device_get_action(dev);
+                const char *devpath = udev_device_get_devpath(dev);
 
-                if (action && devpath) {
-                    printf("Action: %s\n", action);
-                    printf("Devpath: %s\n", devpath);
-                    if (vendor_id && model_id) {
-                        printf("VendorID: %s, ProductID: %s\n", vendor_id, model_id);
+                if (action && devpath && strcmp(action, "add") == 0) {
+                    if (access(dev_path, F_OK) == 0) {
+                        printf("Device %s reconnected (%s).\n", dev_path, devpath);
                         exit = true;
                     }
                 }
@@ -401,7 +403,7 @@ exit:
         }
 
         if (!stop) {
-            wait_for_usb_connection();
+            wait_for_usb_connection(argv[1]);
         }
 
     } while(!stop);
