@@ -1,61 +1,51 @@
-#include <linux/input-event-codes.h>
-#include <stdio.h>
-
-#include <linux/version.h>
-#include <linux/input.h>
-
-#include <string.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <dirent.h>
 #include <errno.h>
-#include <getopt.h>
-#include <signal.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <unistd.h>
-
-#include <dirent.h>
 #include <fcntl.h>
+#include <libudev.h>
+#include <linux/input-event-codes.h>
 #include <linux/input.h>
 #include <linux/uinput.h>
+#include <poll.h>
+#include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <sys/types.h>
+#include <sys/select.h>
+#include <sys/time.h>
 #include <unistd.h>
-#include <stdbool.h>
 
-#include <libudev.h>
-#include <poll.h>
+#define LOGITECH_VENDOR_ID       0x046d /* 1133 */
+#define LOGITECH_K650_PRODUCT_ID 0xc548 /* 50504 */
+#define LOGITECH_K650_VERSION    0x0111 /* 273 */
 
+#define CHECK_READ(res, buf)                                                                                      \
+    do {                                                                                                          \
+        if ((res) == -1) {                                                                                        \
+            perror("read failed.");                                                                               \
+            goto exit;                                                                                            \
+        }                                                                                                         \
+        if ((size_t)(res) != sizeof(buf)) {                                                                       \
+            fprintf(stderr, "expected to read %zu bytes, but read only %zd\n", sizeof(struct input_event), (res)); \
+            goto exit;                                                                                            \
+        }                                                                                                         \
+    } while (0)
 
-#define CHECK_READ(res, buf)                                                                                   \
-if (res == -1) {                                                                                               \
-    perror("read failed.");                                                                                    \
-    goto exit;                                                                                                 \
-}                                                                                                              \
-if (res != sizeof(buf)) {                                                                                      \
-    fprintf(stderr, "expected to read %d bytes, but readed only %d\n", (int) sizeof(struct input_event), res); \
-    goto exit;                                                                                                 \
-}                                                                                                              \
-
-#define CHECK_WRITE(res, buf)                                                                                    \
-if (res == -1) {                                                                                                 \
-    perror("write failed.");                                                                                     \
-    goto exit;                                                                                                   \
-}                                                                                                                \
-if (res != sizeof(buf)) {                                                                                        \
-    fprintf(stderr, "expected to write %d bytes, but written only %d\n", (int) sizeof(struct input_event), res); \
-    goto exit;                                                                                                   \
-}                                                                                                                \
+#define CHECK_WRITE(res, buf)                                                                                      \
+    do {                                                                                                           \
+        if ((res) == -1) {                                                                                         \
+            perror("write failed.");                                                                               \
+            goto exit;                                                                                             \
+        }                                                                                                          \
+        if ((size_t)(res) != sizeof(buf)) {                                                                        \
+            fprintf(stderr, "expected to write %zu bytes, but wrote only %zd\n", sizeof(struct input_event), (res)); \
+            goto exit;                                                                                             \
+        }                                                                                                          \
+    } while (0)
 
 static volatile sig_atomic_t stop = 0;
 
 static void interrupt_handler(int sig)
 {
+    (void)sig;
     stop = 1;
 }
 
@@ -176,6 +166,7 @@ static void wait_for_usb_connection()
 
 int main(int argc, char *argv[])
 {
+    (void)argc;
     int fd = 0;
     int uinput = 0;
     int rc = 0;
@@ -209,16 +200,21 @@ int main(int argc, char *argv[])
             goto exit;
         }
 
-        if ((id.bustype != 3)||(id.vendor != 1133)||(id.product != 50504)) {
+        if ((id.bustype != BUS_USB) || (id.vendor != LOGITECH_VENDOR_ID) || (id.product != LOGITECH_K650_PRODUCT_ID)) {
             fprintf(stderr, "Wrong keyboard detected!\n");
             goto exit;
         }
 
-        if (id.version != 273) {
-            printf("WARNING!!! keyboard version 273 expected, but %d detected!\n", id.version);
+        if (id.version != LOGITECH_K650_VERSION) {
+            printf("WARNING!!! keyboard version %d expected, but %d detected!\n", LOGITECH_K650_VERSION, id.version);
         }
 
-        uinput = constructKeyboard("Example device", &id);
+        char dev_name[UINPUT_MAX_NAME_SIZE] = "Logitech K650";
+        if (ioctl(fd, EVIOCGNAME(sizeof(dev_name)), dev_name) == -1) {
+            perror("ioctl for EVIOCGNAME failed.");
+        }
+
+        uinput = constructKeyboard(dev_name, &id);
         if (uinput == -1) {
             fprintf(stderr, "constructKeyboard call failed!\n");
             goto exit;
@@ -239,9 +235,9 @@ int main(int argc, char *argv[])
         while(!stop)
         {
             struct input_event ev;
-            int wr = 0;
+            ssize_t wr = 0;
             int rv = 0;
-            int rd = 0;
+            ssize_t rd = 0;
 
             rd = select(fd + 1, &rdfs, NULL, NULL, NULL);
 
